@@ -9,7 +9,6 @@ import S3Storage from "../../utils/S3/s3Storage";
 import { createPreviewContract } from "../../templateEmail/createPreviewContract";
 import { generatePdf } from "../../utils/generatePdf";
 import fs from "fs";
-import { error } from "console";
 import { calcularHorasTrabalhadas, convertHHMMToDecimal } from "../../utils/calculaHoraExtra";
 import { isMultiCompanyEnabled } from "../../helpers/featureToggle";
 
@@ -21,6 +20,10 @@ export interface INewProject {
   type_category: string;
   company_id: string;
   client: IClientData;
+  location?: string;
+  lat?: string;
+  log?: string;
+  radius?: string;
 }
 
 export interface IClientData {
@@ -28,12 +31,6 @@ export interface IClientData {
   email: string;
   phone: string;
   birth_date: string;
-  document: string;
-  location: string;
-  lat: string;
-  log: string;
-  radius: string;
-
   start_date: string;
   deadline: string;
 }
@@ -366,10 +363,10 @@ export class ProjectController {
     try {
       const project = await prisma.project.findUnique({
         where: { id },
-        
+
         include: {
           client: true,
-          
+
           serviceProject: {
             include: {
               UserServiceProject: {
@@ -981,7 +978,6 @@ export class ProjectController {
     const data: INewProject = req.body;
 
     try {
-      // Validate required fields
       if (!data.seller_user_id) {
         return res.status(400).json({ error: "seller_user_id is required" });
       }
@@ -993,6 +989,18 @@ export class ProjectController {
       }
       if (!data.client.name || !data.client.email) {
         return res.status(400).json({ error: "client name and email are required" });
+      }
+      if (!data.location) {
+        return res.status(400).json({ error: "location is required" });
+      }
+      if (!data.lat) {
+        return res.status(400).json({ error: "lat is required" });
+      }
+      if (!data.log) {
+        return res.status(400).json({ error: "log is required" });
+      }
+      if (!data.radius) {
+        return res.status(400).json({ error: "radius is required" });
       }
 
       // Set default values for optional fields
@@ -1014,10 +1022,8 @@ export class ProjectController {
           where: { id: client.id },
           data: {
             name: data.client.name,
-            document: data.client.document,
             phone: data.client.phone,
             birth_date: data.client.birth_date,
-            // NÃO atualizar lat, log, radius aqui!
           },
         });
       } else {
@@ -1026,19 +1032,13 @@ export class ProjectController {
           data: {
             name: data.client.name,
             email: data.client.email,
-            document: data.client.document,
             phone: data.client.phone,
             birth_date: data.client.birth_date,
-            location: data.client.location,
-            lat: data.client.lat,
-            log: data.client.log,
-            radius: data.client.radius ? Number(data.client.radius) : null,
             company_id: data.company_id,
           },
         });
       }
 
-      // 🔄 USAR O SISTEMA DE NUMERAÇÃO GLOBAL DO ESTIMATE
       // Buscar o último estimate da empresa para sincronizar numeração
       const lastEstimate = await prisma.estimate.findFirst({
         where: {
@@ -1068,15 +1068,9 @@ export class ProjectController {
         }
       });
 
-      console.log('🔄 [ProjectController] Último estimate encontrado:', lastEstimate);
-      console.log('🔄 [ProjectController] Último project encontrado:', lastProject);
-
-      // Comparar os números e usar o maior para manter sincronização (MESMA LÓGICA DO generateGlobalNumber)
-      // Extrair apenas o número do projeto dos estimates (antes da barra)
       let lastEstimateNumber = 0;
       if (lastEstimate?.number) {
         const parts = lastEstimate.number.split('/');
-        // Se tem formato projeto/estimate, pegar a primeira parte. Se não, pegar o número inteiro
         lastEstimateNumber = Number(parts[0]) || 0;
       }
 
@@ -1085,10 +1079,6 @@ export class ProjectController {
 
       const nextNumber = highestNumber + 1;
 
-      console.log('✅ [ProjectController] Números comparados - Estimate:', lastEstimateNumber, 'Project:', lastProjectNumber);
-      console.log('✅ [ProjectController] Próximo contract_number:', nextNumber);
-
-      // Criação do projeto com número sincronizado
       const project = await prisma.project.create({
         data: {
           seller_user_id: data.seller_user_id,
@@ -1098,11 +1088,11 @@ export class ProjectController {
           start_date: data.client.start_date,
           deadline: data.client.deadline,
           company_id: data.company_id,
-          contract_number: nextNumber, // Usar número sincronizado
-          location: data.client.location,
-          lat: data.client.lat,
-          log: data.client.log,
-          radius: data.client.radius ? Number(data.client.radius) : null,
+          contract_number: nextNumber,
+          location: data.location,
+          lat: data.lat,
+          log: data.log,
+          radius: data.radius ? Number(data.radius) : null,
         },
       });
 
