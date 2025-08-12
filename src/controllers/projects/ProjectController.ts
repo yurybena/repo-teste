@@ -34,7 +34,6 @@ export interface IClientData {
   phone: string;
   birth_date: string;
   start_date: string;
-  deadline: string;
 }
 
 export interface IServicesData {
@@ -1087,8 +1086,8 @@ export class ProjectController {
           price: price,
           status_project: status_project,
           client_id: client.id,
-          start_date: data.client.start_date,
-          deadline: data.client.deadline,
+          start_date: data.start_date,
+          deadline: data.deadline,
           company_id: data.company_id,
           contract_number: nextNumber,
           location: data.location,
