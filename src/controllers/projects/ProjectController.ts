@@ -24,6 +24,8 @@ export interface INewProject {
   lat?: string;
   log?: string;
   radius?: string;
+  start_date?: string;
+  deadline?: string;
 }
 
 export interface IClientData {
@@ -1001,6 +1003,12 @@ export class ProjectController {
       }
       if (!data.radius) {
         return res.status(400).json({ error: "radius is required" });
+      }
+      if (!data.start_date) {
+        return res.status(400).json({ error: "start_date is required" });
+      }
+      if (!data.deadline) {
+        return res.status(400).json({ error: "deadline is required" });
       }
 
       // Set default values for optional fields
